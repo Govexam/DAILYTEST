@@ -1,0 +1,1105 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Quiz - April 2025</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" onerror="console.warn('Font Awesome failed to load')">
+    <style>
+        body { 
+            font-family: 'Arial', sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background: linear-gradient(135deg, #1e3c72, #2a5298); 
+            color: #333; 
+            overflow-x: auto;
+        }
+        .start-container { 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            text-align: center; 
+            background: rgba(255, 255, 255, 0.9); 
+            padding: 20px; 
+            border-radius: 10px; 
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); 
+            margin: 10px;
+        }
+        .instructions { 
+            font-size: 1rem; 
+            color: #2a5298; 
+            margin-bottom: 15px; 
+            max-width: 90%; 
+        }
+        #startBtn { 
+            padding: 12px 24px; 
+            font-size: 1.2rem; 
+            background: #ff6f61; 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: transform 0.3s; 
+            touch-action: manipulation;
+        }
+        #startBtn:hover { 
+            transform: scale(1.05); 
+            background: #ff8781; 
+        }
+
+        .quiz-container { 
+            width: 90%; 
+            max-width: 800px; 
+            margin: 15px auto; 
+            padding: 15px; 
+            background: white; 
+            border-radius: 10px; 
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); 
+        }
+        .question-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .question { 
+            font-size: 1.2rem; 
+            font-weight: bold; 
+            margin-bottom: 10px; 
+            color: #1e3c72; 
+            flex: 1;
+        }
+        .language-toggle {
+            font-size: 1rem;
+            cursor: pointer;
+            color: #007bff;
+            transition: color 0.3s;
+        }
+        .language-toggle:hover {
+            color: #0056b3;
+        }
+        .option { 
+            display: block; 
+            width: 100%; 
+            padding: 8px; 
+            margin: 5px 0; 
+            background: #f0f0f0; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 1rem; 
+            transition: background 0.3s; 
+        }
+        .option:hover { background: #e0e0e0; }
+        .selected { background-color: #28a745 !important; color: white; }
+        .wrong Kris { background-color: #dc3545 !important; color: white; }
+
+        .timer-bar { 
+            height: 8px; 
+            width: 100%; 
+            background: green; 
+            animation: timer 3000s linear forwards; 
+            border-radius: 5px; 
+            margin-bottom: 5px; 
+        }
+        @keyframes timer {
+            0% { background: green; width: 100%; }
+            100% { background: red; width: 0; }
+        }
+        .per-question-timer { 
+            font-size: 1rem; 
+            font-weight: bold; 
+            color: #ff6f61; 
+            margin-bottom: 10px; 
+        }
+
+        .palette { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 5px; 
+            margin: 10px 0; 
+            padding: 10px; 
+            background: #f8f9fa; 
+            border: 2px solid #1e3c72; 
+            border-radius: 10px; 
+            justify-content: center; 
+        }
+        .palette-item { 
+            width: 28px; 
+            height: 28px; 
+            background: #28a745; 
+            text-align: center; 
+            line-height: 28px; 
+            font-size: 0.9rem; 
+            color: white; 
+            cursor: pointer; 
+            transition: transform 0.2s; 
+        }
+        .palette-item.answered { background: #ffc107; }
+        .palette-item.reviewed { background: #dc3545; }
+        .palette-item:hover { transform: scale(1.1); }
+
+        .buttons { 
+            display: flex; 
+            flex-wrap: wrap; 
+            justify-content: space-between; 
+            margin: 10px 0; 
+            gap: 5px; 
+        }
+        .btn { 
+            padding: 8px 16px; 
+            font-size: 0.9rem; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            transition: transform 0.3s; 
+            flex: 1; 
+            min-width: 100px; 
+        }
+        .btn-save { background: #007bff; color: white; }
+        .btn-save:hover { transform: scale(1.05); background: #0056b3; }
+        .btn-review { background: #17a2b8; color: white; }
+        .btn-review:hover { transform: scale(1.05); background: #138496; }
+        .btn-clear { background: #6c757d; color: white; }
+        .btn-clear:hover { transform: scale(1.05); background: #5a6268; }
+        .btn-prev { background: #ffc107; color: white; }
+        .btn-prev:hover { transform: scale(1.05); background: #e0a800; }
+        .btn-submit { background: #28a745; color: white; }
+        .btn-submit:hover { transform: scale(1.05); background: #218838; }
+
+        #result, #solutions { 
+            display: none; 
+            padding: 15px; 
+            background: #fff3cd; 
+            border-radius: 10px; 
+            margin-top: 15px; 
+        }
+        .solution-slide { 
+            margin: 10px 0; 
+            padding: 10px; 
+            background: #e9ecef; 
+            border-left: 4px solid #1e3c72; 
+        }
+        .solution-slide b { color: #1e3c72; }
+        .solution-slide .correct { color: #28a745; }
+        .solution-slide .attempt { color: #6f42c1; }
+        #reAttemptBtn { 
+            padding: 10px 20px; 
+            font-size: 1rem; 
+            background: #ff6f61; 
+            color: white; 
+            border: none; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            transition: transform 0.3s; 
+        }
+        #reAttemptBtn:hover { transform: scale(1.1); background: #ff8781; }
+
+        .chart-container { 
+            width: 100%; 
+            margin: 15px auto; 
+            text-align: center; 
+        }
+        .chart-bar, .chart-pie { 
+            width: 100%; 
+            max-width: 300px; 
+            height: 150px; 
+            background: #f0f0f0; 
+            margin: 10px auto; 
+            border-radius: 5px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: #1e3c72; 
+            font-weight: bold; 
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .quiz-container { padding: 10px; }
+            .question { font-size: 1rem; }
+            .option { font-size: 0.9rem; padding: 6px; }
+            .palette-item { width: 24px; height: 24px; line-height: 24px; font-size: 0.8rem; }
+            .buttons { flex-direction: column; }
+            .btn { font-size: 0.8rem; padding: 6px 12px; min-width: 80px; }
+            .per-question-timer, #result, .solution-slide { font-size: 0.9rem; }
+            .chart-container { margin: 10px auto; }
+            .chart-bar, .chart-pie { max-width: 100%; height: 120px; font-size: 0.8rem; }
+            .language-toggle { font-size: 0.9rem; }
+            #startBtn { padding: 10px 20px; font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="start-container" id="start-screen">
+        <h1 style="color: #1e3c72;">Welcome to the Ultimate Quiz!</h1>
+        <div class="instructions">
+            <p><strong>Instructions:</strong></p>
+            <ul>
+                <li>Read each question carefully and select the correct answer.</li>
+                <li>Toggle between English and Hindi using the <i class="fa fa-language"></i> icon next to each question.</li>
+                <li>You have 60 seconds per question, displayed below the overall timer bar.</li>
+                <li>The overall timer bar (50 minutes total) turns from green to red as time runs out.</li>
+                <li>Use the question palette to navigate between questions.</li>
+                <li>Use the "Save & Next," "Mark for Review," "Clear Response," "Previous," and "Submit" buttons to manage your answers.</li>
+                <li>After submitting, view your score, detailed solutions with explanations, and score charts.</li>
+                <li>Click "Re-attempt" to try again.</li>
+            </ul>
+        </div>
+        <button id="startBtn" aria-label="Start the quiz">Start Quiz</button>
+    </div>
+
+    <div class="quiz-container" id="quiz-screen" style="display: none;">
+        <div class="timer-bar" id="timerBar"></div>
+        <div class="per-question-timer" id="perQuestionTimer">Time Left: 60 seconds</div>
+        <div class="palette" id="questionPalette"></div>
+        <div class="question-container">
+            <div class="question" id="question"></div>
+            <i class="fa fa-language language-toggle" id="languageToggle" aria-label="Toggle language" role="button" tabindex="0"></i>
+        </div>
+        <div id="options"></div>
+        <div class="buttons">
+            <button class="btn btn-clear" onclick="clearResponse()" aria-label="Clear response">Clear Response</button>
+            <button class="btn btn-prev" onclick="previousQuestion()" id="prevBtn" style="display: none;" aria-label="Previous question">Previous</button>
+            <button class="btn btn-save" onclick="saveAndNext()" aria-label="Save and next">Save & Next</button>
+            <button class="btn btn-review" onclick="markForReview()" aria-label="Mark for review">Mark for Review</button>
+            <button class="btn btn-submit" onclick="submitQuiz()" id="submitBtn" style="display: none;" aria-label="Submit quiz">Submit</button>
+        </div>
+        <div id="result"></div>
+        <div id="solutions"></div>
+        <div class="chart-container" id="chartContainer" style="display: none;">
+            <div class="chart-bar" id="barChart"></div>
+            <div class="chart-pie" id="pieChart"></div>
+        </div>
+        <button id="reAttemptBtn" style="display: none;" aria-label="Re-attempt quiz">Re-attempt</button>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                q_en: "What is a convex lens?",
+                q_hi: "उत्तल लेंस क्या है?",
+                options_en: [
+                    "A lens with a uniform thickness",
+                    "A lens thicker at the edges than the center",
+                    "A lens thicker at the center than the edges",
+                    "A lens with a flat surface"
+                ],
+                options_hi: [
+                    "एकसमान मोटाई वाला लेंस",
+                    "किनारों पर केंद्र से अधिक मोटा लेंस",
+                    "केंद्र में किनारों से अधिक मोटा लेंस",
+                    "चपटे सतह वाला लेंस"
+                ],
+                answer: 2,
+                solution_en: "A convex lens is thicker at the center than at the edges, causing light rays to converge. It is used in magnifying glasses and corrective lenses for farsightedness.",
+                solution_hi: "उत्तल लेंस केंद्र में किनारों की तुलना में अधिक मोटा होता है, जिससे प्रकाश किरणें अभिसरित होती हैं। इसका उपयोग आवर्धक कांच और दूरदृष्टि दोष के सुधार के लिए किया जाता है।"
+            },
+            {
+                q_en: "If a spoon is to be electroplated with silver, the spoon is:",
+                q_hi: "यदि एक चम्मच को चांदी से विद्युत लेपित करना हो, तो चम्मच:",
+                options_en: [
+                    "Dipped in a solution of silver nitrate",
+                    "Made the cathode",
+                    "Made the anode",
+                    "All of the above"
+                ],
+                options_hi: [
+                    "चांदी के नाइट्रेट के घोल में डुबोया जाता है",
+                    "कैथोड बनाया जाता है",
+                    "एनोड बनाया जाता है",
+                    "उपरोक्त सभी"
+                ],
+                answer: 1,
+                solution_en: "In electroplating, the object to be plated (spoon) is made the cathode, where silver ions from the electrolyte (e.g., silver nitrate) deposit onto the spoon.",
+                solution_hi: "विद्युत लेपन में, लेपित होने वाली वस्तु (चम्मच) को कैथोड बनाया जाता है, जहां इलेक्ट्रोलाइट ( जैसे चांदी नाइट्रेट) से चांदी के आयन चम्मच पर जमा होते हैं।"
+            },
+            {
+                q_en: "Which planet is known as the Red Planet?",
+                q_hi: "कौन सा ग्रह लाल ग्रह के रूप में जाना जाता है?",
+                options_en: ["Jupiter", "Mars", "Venus", "Mercury"],
+                options_hi: ["बृहस्पति", "मंगल", "शुक्र", "बुध"],
+                answer: 1,
+                solution_en: "Mars is called the Red Planet due to its reddish appearance, caused by iron oxide (rust) on its surface.",
+                solution_hi: "मंगल को लाल ग्रह कहा जाता है क्योंकि इसकी सतह पर आयरन ऑक्साइड (जंग) के कारण यह लाल दिखाई देता है।"
+            },
+            {
+                q_en: "Who was the first Prime Minister of India?",
+                q_hi: "भारत के पहले प्रधानमंत्री कौन थे?",
+                options_en: ["Mahatma Gandhi", "Jawaharlal Nehru", "Sardar Patel", "Indira Gandhi"],
+                options_hi: ["महात्मा गांधी", "जवाहरलाल नेहरू", "सरदार पटेल", "इंदिरा गांधी"],
+                answer: 1,
+                solution_en: "Jawaharlal Nehru was the first Prime Minister of India, serving from 1947 to 1964.",
+                solution_hi: "जवाहरलाल नेहरू भारत के पहले प्रधानमंत्री थे, जिन्होंने 1947 से 1964 तक सेवा की।"
+            },
+            {
+                q_en: "What is the chemical symbol for water?",
+                q_hi: "पानी का रासायनिक प्रतीक क्या है?",
+                options_en: ["H2O", "CO2", "O2", "N2"],
+                options_hi: ["H2O", "CO2", "O2", "N2"],
+                answer: 0,
+                solution_en: "The chemical symbol for water is H2O, representing two hydrogen atoms and one oxygen atom bonded together.",
+                solution_hi: "पानी का रासायनिक प्रतीक H2O है, जो दो हाइड्रोजन परमाणुओं और एक ऑक्सीजन परमाणु को एक साथ बंधे होने का प्रतिनिधित्व करता है।"
+            },
+            {
+                q_en: "Which country hosted the Mobile World Congress 2025?",
+                q_hi: "मोबाइल वर्ल्ड कांग्रेस 2025 की मेजबानी किस देश ने की?",
+                options_en: ["Brazil", "Spain", "India", "France"],
+                options_hi: ["ब्राजील", "स्पेन", "भारत", "फ्रांस"],
+                answer: 1,
+                solution_en: "Mobile World Congress 2025 was held in Barcelona, Spain, from March 3-6, 2025, a major technology event.",
+                solution_hi: "मोबाइल वर्ल्ड कांग्रेस 2025 बार्सिलोना, स्पेन में 3-6 मार्च 2025 को आयोजित हुआ, जो एक प्रमुख प्रौद्योगिकी आयोजन है।"
+            },
+            {
+                q_en: "What is the capital of France?",
+                q_hi: "फ्रांस की राजधानी क्या है?",
+                options_en: ["London", "Paris", "Berlin", "Madrid"],
+                options_hi: ["लंदन", "पेरिस", "बर्लिन", "मैड्रिड"],
+                answer: 1,
+                solution_en: "Paris is the capital city of France, known for landmarks like the Eiffel Tower.",
+                solution_hi: "पेरिस फ्रांस की राजधानी है, जो एफिल टॉवर जैसे स्थलों के लिए प्रसिद्ध है।"
+            },
+            {
+                q_en: "Which gas is most abundant in Earth's atmosphere?",
+                q_hi: "पृथ्वी के वायुमंडल में कौन सी गैस सबसे अधिक प्रचुर मात्रा में है?",
+                options_en: ["Oxygen", "Carbon Dioxide", "Nitrogen", "Argon"],
+                options_hi: ["ऑक्सीजन", "कार्बन डाइऑक्साइड", "नाइट्रोजन", "आर्गन"],
+                answer: 2,
+                solution_en: "Nitrogen is the most abundant gas, making up about 78% of Earth's atmosphere.",
+                solution_hi: "नाइट्रोजन सबसे प्रचुर गैस है, जो पृथ्वी के वायुमंडल का लगभग 78% हिस्सा बनाती है।"
+            },
+            {
+                q_en: "Who wrote the Indian National Anthem?",
+                q_hi: "भारतीय राष्ट्रीय गान किसने लिखा?",
+                options_en: ["Rabindranath Tagore", "Bankim Chandra Chatterjee", "Sarojini Naidu", "Subhas Chandra Bose"],
+                options_hi: ["रवींद्रनाथ टैगोर", "बंकिम चंद्र चटर्जी", "सरोजिनी नायडू", "सुभाष चंद्र बोस"],
+                answer: 0,
+                solution_en: "Rabindranath Tagore wrote 'Jana Gana Mana,' adopted as India's National Anthem in 1950.",
+                solution_hi: "रवींद्रनाथ टैगोर ने 'जन गण मन' लिखा, जिसे 1950 में भारत के राष्ट्रीय गान के रूप में अपनाया गया।"
+            },
+            {
+                q_en: "What is the SI unit of force?",
+                q_hi: "बल की SI इकाई क्या है?",
+                options_en: ["Watt", "Newton", "Joule", "Pascal"],
+                options_hi: ["वाट", "न्यूटन", "जूल", "पास्कल"],
+                answer: 1,
+                solution_en: "The SI unit of force is the Newton (N), named after Sir Isaac Newton.",
+                solution_hi: "बल की SI इकाई न्यूटन (N) है, जिसका नाम सर आइजैक न्यूटन के नाम पर रखा गया है।"
+            },
+            {
+                q_en: "Which state launched Project Hifazat for women's safety in 2025?",
+                q_hi: "2025 में महिलाओं की सुरक्षा के लिए प्रोजेक्ट हिफाजत किस राज्य ने शुरू किया?",
+                options_en: ["Rajasthan", "Punjab", "Haryana", "Bihar"],
+                options_hi: ["राजस्थान", "पंजाब", "हरियाणा", "बिहार"],
+                answer: 1,
+                solution_en: "Punjab launched Project Hifazat in 2025 to ensure women's safety and respect.",
+                solution_hi: "पंजाब ने 2025 में महिलाओं की सुरक्षा और सम्मान सुनिश्चित करने के लिए प्रोजेक्ट हिफाजत शुरू किया।"
+            },
+            {
+                q_en: "What is the theme of International Women's Day 2025?",
+                q_hi: "अंतरराष्ट्रीय महिला दिवस 2025 का विषय क्या है?",
+                options_en: ["Educate rapidly", "Act rapidly", "Develop rapidly", "Promote women empowerment"],
+                options_hi: ["तेजी से शिक्षित करें", "तेजी से कार्य करें", "तेजी से विकास करें", "महिला सशक्तिकरण को बढ़ावा दें"],
+                answer: 1,
+                solution_en: "The theme of International Women's Day 2025 is 'Act rapidly,' focusing on women's equality.",
+                solution_hi: "अंतरराष्ट्रीय महिला दिवस 2025 का विषय 'तेजी से कार्य करें' है, जो महिला समानता पर केंद्रित है।"
+            },
+            {
+                q_en: "Which element is essential for human bones?",
+                q_hi: "मानव हड्डियों के लिए कौन सा तत्व आवश्यक है?",
+                options_en: ["Iron", "Calcium", "Sodium", "Potassium"],
+                options_hi: ["लोहा", "कैल्शियम", "सोडियम", "पोटैशियम"],
+                answer: 1,
+                solution_en: "Calcium is essential for building and maintaining strong bones and teeth.",
+                solution_hi: "कैल्शियम मजबूत हड्डियों और दांतों के निर्माण और रखरखाव के लिए आवश्यक है।"
+            },
+            {
+                q_en: "Who discovered penicillin?",
+                q_hi: "पेनिसिलिन की खोज किसने की?",
+                options_en: ["Alexander Fleming", "Marie Curie", "Albert Einstein", "Thomas Edison"],
+                options_hi: ["अलेक्जेंडर फ्लेमिंग", "मैरी क्यूरी", "अल्बर्ट आइंस्टीन", "थॉमस एडिसन"],
+                answer: 0,
+                solution_en: "Alexander Fleming discovered penicillin in 1928, the first antibiotic.",
+                solution_hi: "अलेक्जेंडर फ्लेमिंग ने 1928 में पेनिसिलिन की खोज की, जो पहला एंटीबायोटिक था।"
+            },
+            {
+                q_en: "Which river is known as the 'Ganga of the South'?",
+                q_hi: "कौन सी नदी को 'दक्षिण की गंगा' कहा जाता है?",
+                options_en: ["Godavari", "Krishna", "Kaveri", "Narmada"],
+                options_hi: ["गोदावरी", "कृष्णा", "कावेरी", "नर्मदा"],
+                answer: 2,
+                solution_en: "Kaveri is called the 'Ganga of the South' due to its cultural and economic significance.",
+                solution_hi: "कावेरी को इसके सांस्कृतिक और आर्थिक महत्व के कारण 'दक्षिण की गंगा' कहा जाता है।"
+            },
+            {
+                q_en: "What is the primary source of energy for Earth's climate system?",
+                q_hi: "पृथ्वी की जलवायु प्रणाली के लिए ऊर्जा का प्राथमिक स्रोत क्या है?",
+                options_en: ["Wind", "Sun", "Geothermal", "Ocean currents"],
+                options_hi: ["हवा", "सूर्य", "भूतापीय", "महासागर धाराएं"],
+                answer: 1,
+                solution_en: "The Sun is the primary source of energy, driving weather patterns and climate.",
+                solution_hi: "सूर्य ऊर्जा का प्राथमिक स्रोत है, जो मौसम पैटर्न और जलवायु को संचालित करता है।"
+            },
+            {
+                q_en: "Which Indian state has the longest coastline?",
+                q_hi: "किस भारतीय राज्य की तटरेखा सबसे लंबी है?",
+                options_en: ["Gujarat", "Tamil Nadu", "Andhra Pradesh", "Maharashtra"],
+                options_hi: ["गुजरात", "तमिलनाडु", "आंध्र प्रदेश", "महाराष्ट्र"],
+                answer: 0,
+                solution_en: "Gujarat has the longest coastline in India, approximately 1,600 km.",
+                solution_hi: "गुजरात की तटरेखा भारत में सबसे लंबी है, लगभग 1,600 किमी।"
+            },
+            {
+                q_en: "What is the currency of Japan?",
+                q_hi: "जापान की मुद्रा क्या है?",
+                options_en: ["Yuan", "Yen", "Won", "Ringgit"],
+                options_hi: ["युआन", "येन", "वोन", "रिंगिट"],
+                answer: 1,
+                solution_en: "The Yen is the official currency of Japan.",
+                solution_hi: "येन जापान की आधिकारिक मुद्रा है।"
+            },
+            {
+                q_en: "Which organ is responsible for pumping blood in the human body?",
+                q_hi: "मानव शरीर में रक्त पंप करने के लिए कौन सा अंग जिम्मेदार है?",
+                options_en: ["Liver", "Heart", "Lungs", "Kidneys"],
+                options_hi: ["यकृत", "हृदय", "फेफड़े", "गुर्दे"],
+                answer: 1,
+                solution_en: "The heart pumps blood throughout the body, supplying oxygen and nutrients.",
+                solution_hi: "हृदय पूरे शरीर में रक्त पंप करता है, ऑक्सीजन और पोषक तत्वों की आपूर्ति करता है।"
+            },
+            {
+                q_en: "Which year did India gain independence?",
+                q_hi: "भारत को किस वर्ष स्वतंत्रता मिली?",
+                options_en: ["1945", "1947", "1950", "1962"],
+                options_hi: ["1945", "1947", "1950", "1962"],
+                answer: 1,
+                solution_en: "India gained independence from British rule on August 15, 1947.",
+                solution_hi: "भारत को 15 अगस्त 1947 को ब्रिटिश शासन से स्वतंत्रता मिली।"
+            },
+            {
+                q_en: "What is the chemical formula for table salt?",
+                q_hi: "टेबल नमक का रासायनिक सूत्र क्या है?",
+                options_en: ["NaCl", "KCl", "CaCl2", "MgCl2"],
+                options_hi: ["NaCl", "KCl", "CaCl2", "MgCl2"],
+                answer: 0,
+                solution_en: "Table salt is sodium chloride, with the chemical formula NaCl.",
+                solution_hi: "टेबल नमक सोडियम क्लोराइड है, जिसका रासायनिक सूत्र NaCl है।"
+            },
+            {
+                q_en: "Which is the largest desert in the world?",
+                q_hi: "विश्व का सबसे बड़ा रेगिस्तान कौन सा है?",
+                options_en: ["Sahara", "Gobi", "Antarctic", "Kalahari"],
+                options_hi: ["सहारा", "गोबी", "अंटार्कटिक", "कालाहारी"],
+                answer: 2,
+                solution_en: "The Antarctic Desert is the largest desert, covering about 14 million square kilometers.",
+                solution_hi: "अंटार्कटिक रेगिस्तान सबसे बड़ा रेगिस्तान है, जो लगभग 14 मिलियन वर्ग किलोमीटर में फैला है।"
+            },
+            {
+                q_en: "Who is known as the 'Father of the Indian Constitution'?",
+                q_hi: "भारतीय संविधान के जनक के रूप में किसे जाना जाता है?",
+                options_en: ["Mahatma Gandhi", "B.R. Ambedkar", "Jawaharlal Nehru", "Sardar Patel"],
+                options_hi: ["महात्मा गांधी", "बी.आर. अंबेडकर", "जवाहरलाल नेहरू", "सरदार पटेल"],
+                answer: 1,
+                solution_en: "B.R. Ambedkar is known as the 'Father of the Indian Constitution' for his role in drafting it.",
+                solution_hi: "बी.आर. अंबेडकर को भारतीय संविधान के प्रारूपण में उनकी भूमिका के लिए 'भारतीय संविधान के जनक' के रूप में जाना जाता है।"
+            },
+            {
+                q_en: "What is the speed of light in a vacuum?",
+                q_hi: "निर्वात में प्रकाश की गति क्या है?",
+                options_en: ["300,000 km/s", "150,000 km/s", "600,000 km/s", "1,000 km/s"],
+                options_hi: ["300,000 किमी/सेकंड", "150,000 किमी/सेकंड", "600,000 किमी/सेकंड", "1,000 किमी/सेकंड"],
+                answer: 0,
+                solution_en: "The speed of light in a vacuum is approximately 300,000 km/s (299,792 km/s).",
+                solution_hi: "निर्वात में प्रकाश की गति लगभग 300,000 किमी/सेकंड (299,792 किमी/सेकंड) है।"
+            },
+            {
+                q_en: "Which gas is used in balloons to make them float?",
+                q_hi: "गुब्बारों को तैराने के लिए कौन सी गैस का उपयोग किया जाता है?",
+                options_en: ["Oxygen", "Helium", "Nitrogen", "Carbon Dioxide"],
+                options_hi: ["ऑक्सीजन", "हीलियम", "नाइट्रोजन", "कार्बन डाइऑक्साइड"],
+                answer: 1,
+                solution_en: "Helium is lighter than air, causing balloons to float.",
+                solution_hi: "हीलियम हवा से हल्का है, जिसके कारण गुब्बारे तैरते हैं।"
+            },
+            {
+                q_en: "Which mountain is the highest in the world?",
+                q_hi: "विश्व का सबसे ऊंचा पर्वत कौन सा है?",
+                options_en: ["K2", "Kangchenjunga", "Mount Everest", "Lhotse"],
+                options_hi: ["के2", "कंचनजंगा", "माउंट एवरेस्ट", "ल्होत्से"],
+                answer: 2,
+                solution_en: "Mount Everest, at 8,848 meters, is the highest mountain above sea level.",
+                solution_hi: "माउंट एवरेस्ट, 8,848 मीटर की ऊंचाई के साथ, समुद्र तल से सबसे ऊंचा पर्वत है।"
+            },
+            {
+                q_en: "What is the longest river in the world?",
+                q_hi: "विश्व की सबसे लंबी नदी कौन सी है?",
+                options_en: ["Amazon", "Nile", "Yangtze", "Mississippi"],
+                options_hi: ["अमेजन", "नील", "यांग्त्से", "मिसिसिपी"],
+                answer: 1,
+                solution_en: "The Nile River, approximately 6,650 km long, is considered the longest river.",
+                solution_hi: "नील नदी, लगभग 6,650 किमी लंबी, सबसे लंबी नदी मानी जाती है।"
+            },
+            {
+                q_en: "Which metal is the best conductor of electricity?",
+                q_hi: "कौन सी धातु बिजली की सबसे अच्छी चालक है?",
+                options_en: ["Iron", "Copper", "Aluminum", "Silver"],
+                options_hi: ["लोहा", "तांबा", "एल्यूमीनियम", "चांदी"],
+                answer: 3,
+                solution_en: "Silver is the best conductor of electricity, though copper is more commonly used due to cost.",
+                solution_hi: "चांदी बिजली की सबसे अच्छी चालक है, हालांकि लागत के कारण तांबे का अधिक उपयोग होता है।"
+            },
+            {
+                q_en: "Who was the first woman Prime Minister of India?",
+                q_hi: "भारत की पहली महिला प्रधानमंत्री कौन थीं?",
+                options_en: ["Sonia Gandhi", "Indira Gandhi", "Pratibha Patil", "Sushma Swaraj"],
+                options_hi: ["सोनिया गांधी", "इंदिरा गांधी", "प्रतिभा पाटिल", "सुषमा स्वराज"],
+                answer: 1,
+                solution_en: "Indira Gandhi was the first woman Prime Minister of India, serving from 1966 to 1977 and 1980 to 1984.",
+                solution_hi: "इंदिरा गांधी भारत की पहली महिला प्रधानमंत्री थीं, जिन्होंने 1966 से 1977 और 1980 से 1984 तक सेवा की।"
+            },
+            {
+                q_en: "What is the boiling point of water at standard pressure?",
+                q_hi: "मानक दबाव पर पानी का क्वथनांक क्या है?",
+                options_en: ["0°C", "50°C", "100°C", "150°C"],
+                options_hi: ["0°C", "50°C", "100°C", "150°C"],
+                answer: 2,
+                solution_en: "At standard atmospheric pressure, water boils at 100°C.",
+                solution_hi: "मानक वायुमंडलीय दबाव पर, पानी 100°C पर उबलता है।"
+            },
+            {
+                q_en: "Which country is known as the 'Land of the Rising Sun'?",
+                q_hi: "किस देश को 'उगते सूरज की भूमि' कहा जाता है?",
+                options_en: ["China", "Japan", "Thailand", "South Korea"],
+                options_hi: ["चीन", "जापान", "थाईलैंड", "दक्षिण कोरिया"],
+                answer: 1,
+                solution_en: "Japan is called the 'Land of the Rising Sun' due to its eastern location.",
+                solution_hi: "जापान को इसके पूर्वी स्थान के कारण 'उगते सूरज की भूमि' कहा जाता है।"
+            },
+            {
+                q_en: "What is the main source of Vitamin C?",
+                q_hi: "विटामिन सी का मुख्य स्रोत क्या है?",
+                options_en: ["Milk", "Citrus fruits", "Eggs", "Bread"],
+                options_hi: ["दूध", "खट्टे फल", "अंडे", "ब्रेड"],
+                answer: 1,
+                solution_en: "Citrus fruits like oranges and lemons are rich sources of Vitamin C.",
+                solution_hi: "संतरे और नींबू जैसे खट्टे फल विटामिन सी के समृद्ध स्रोत हैं।"
+            },
+            {
+                q_en: "Which Indian city is known as the 'Silicon Valley of India'?",
+                q_hi: "किस भारतीय शहर को 'भारत की सिलिकॉन वैली' कहा जाता है?",
+                options_en: ["Mumbai", "Bengaluru", "Hyderabad", "Chennai"],
+                options_hi: ["मुंबई", "बेंगलुरु", "हैदराबाद", "चेन्नई"],
+                answer: 1,
+                solution_en: "Bengaluru is called the 'Silicon Valley of India' due to its IT industry.",
+                solution_hi: "बेंगलुरु को इसके आईटी उद्योग के कारण 'भारत की सिलिकॉन वैली' कहा जाता है।"
+            },
+            {
+                q_en: "What is the pH value of pure water?",
+                q_hi: "शुद्ध पानी का pH मान क्या है?",
+                options_en: ["4", "7", "10", "14"],
+                options_hi: ["4", "7", "10", "14"],
+                answer: 1,
+                solution_en: "Pure water has a neutral pH of 7 at 25°C.",
+                solution_hi: "शुद्ध पानी का 25°C पर तटस्थ pH 7 होता है।"
+            },
+            {
+                q_en: "Which is the smallest continent by land area?",
+                q_hi: "भूमि क्षेत्रफल के अनुसार सबसे छोटा महाद्वीप कौन सा है?",
+                options_en: ["Africa", "Australia", "Antarctica", "Asia"],
+                options_hi: ["अफ्रीका", "ऑस्ट्रेलिया", "अंटार्कटिका", "एशिया"],
+                answer: 1,
+                solution_en: "Australia is the smallest continent by land area, covering about 7.7 million square kilometers.",
+                solution_hi: "ऑस्ट्रेलिया भूमि क्षेत्रफल के अनुसार सबसे छोटा महाद्वीप है, जो लगभग 7.7 मिलियन वर्ग किलोमीटर में फैला है।"
+            },
+            {
+                q_en: "Who invented the telephone?",
+                q_hi: "टेलीफोन का आविष्कार किसने किया?",
+                options_en: ["Thomas Edison", "Alexander Graham Bell", "Nikola Tesla", "Guglielmo Marconi"],
+                options_hi: ["थॉमस एडिसन", "अलेक्जेंडर ग्राहम बेल", "निकोला टेस्ला", "गुलिएल्मो मार्कोनी"],
+                answer: 1,
+                solution_en: "Alexander Graham Bell invented the telephone in 1876.",
+                solution_hi: "अलेक्जेंडर ग्राहम बेल ने 1876 में टेलीफोन का आविष्कार किया।"
+            },
+            {
+                q_en: "Which gas is responsible for the greenhouse effect?",
+                q_hi: "ग्रीनहाउस प्रभाव के लिए कौन सी गैस जिम्मेदार है?",
+                options_en: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Helium"],
+                options_hi: ["ऑक्सीजन", "नाइट्रोजन", "कार्बन डाइऑक्साइड", "हीलियम"],
+                answer: 2,
+                solution_en: "Carbon Dioxide is a primary greenhouse gas, trapping heat in the atmosphere.",
+                solution_hi: "कार्बन डाइऑक्साइड एक प्राथमिक ग्रीनहाउस गैस है, जो वायुमंडल में गर्मी को रोकती है।"
+            },
+            {
+                q_en: "Which Indian state is known as the 'Land of Five Rivers'?",
+                q_hi: "किस भारतीय राज्य को 'पांच नदियों की भूमि' कहा जाता है?",
+                options_en: ["Uttar Pradesh", "Punjab", "Haryana", "Bihar"],
+                options_hi: ["उत्तर प्रदेश", "पंजाब", "हरियाणा", "बिहार"],
+                answer: 1,
+                solution_en: "Punjab is known as the 'Land of Five Rivers' due to its five major rivers.",
+                solution_hi: "पंजाब को इसके पांच प्रमुख नदियों के कारण 'पांच नदियों की भूमि' कहा जाता है।"
+            },
+            {
+                q_en: "What is the atomic number of carbon?",
+                q_hi: "कार्बन का परमाणु क्रमांक क्या है?",
+                options_en: ["6", "8", "12", "14"],
+                options_hi: ["6", "8", "12", "14"],
+                answer: 0,
+                solution_en: "The atomic number of carbon is 6, indicating six protons in its nucleus.",
+                solution_hi: "कार्बन का परमाणु क्रमांक 6 है, जो इसके नाभिक में छह प्रोटॉन को दर्शाता है।"
+            },
+            {
+                q_en: "Which is the largest ocean in the world?",
+                q_hi: "विश्व का सबसे बड़ा महासागर कौन सा है?",
+                options_en: ["Atlantic", "Indian", "Pacific", "Arctic"],
+                options_hi: ["अटलांटिक", "हिंद", "प्रशांत", "आर्कटिक"],
+                answer: 2,
+                solution_en: "The Pacific Ocean is the largest, covering about 155 million square kilometers.",
+                solution_hi: "प्रशांत महासागर सबसे बड़ा है, जो लगभग 155 मिलियन वर्ग किलोमीटर में फैला है।"
+            },
+            {
+                q_en: "Who was the first Indian to win a Nobel Prize?",
+                q_hi: "नोबेल पुरस्कार जीतने वाले पहले भारतीय कौन थे?",
+                options_en: ["C.V. Raman", "Amartya Sen", "Rabindranath Tagore", "Mother Teresa"],
+                options_hi: ["सी.वी. रमन", "अमर्त्य सेन", "रवींद्रनाथ टैगोर", "मदर टेरेसा"],
+                answer: 2,
+                solution_en: "Rabindranath Tagore was the first Indian to win a Nobel Prize (Literature, 1913).",
+                solution_hi: "रवींद्रनाथ टैगोर नोबेल पुरस्कार (साहित्य, 1913) जीतने वाले पहले भारतीय थे।"
+            },
+            {
+                q_en: "What is the primary function of the lungs?",
+                q_hi: "फेफड़ों का प्राथमिक कार्य क्या है?",
+                options_en: ["Digestion", "Respiration", "Circulation", "Excretion"],
+                options_hi: ["पाचन", "श्वसन", "परिसंचरण", "उत्सर्जन"],
+                answer: 1,
+                solution_en: "The lungs facilitate respiration, exchanging oxygen and carbon dioxide.",
+                solution_hi: "फेफड़े श्वसन की सुविधा प्रदान करते हैं, ऑक्सीजन और कार्बन डाइऑक्साइड का आदान-प्रदान करते हैं।"
+            },
+            {
+                q_en: "Which vitamin is produced by the skin when exposed to sunlight?",
+                q_hi: "सूर्य के प्रकाश के संपर्क में आने पर त्वचा द्वारा कौन सा विटामिन उत्पादित होता है?",
+                options_en: ["Vitamin A", "Vitamin B", "Vitamin C", "Vitamin D"],
+                options_hi: ["विटामिन A", "विटामिन B", "विटामिन C", "विटामिन D"],
+                answer: 3,
+                solution_en: "Vitamin D is synthesized by the skin when exposed to UVB rays from sunlight.",
+                solution_hi: "विटामिन D सूर्य के UVB किरणों के संपर्क में आने पर त्वचा द्वारा संश्लेषित होता है।"
+            },
+            {
+                q_en: "Which Indian festival is known as the 'Festival of Lights'?",
+                q_hi: "किस भारतीय त्योहार को 'प्रकाश का त्योहार' कहा जाता है?",
+                options_en: ["Holi", "Diwali", "Raksha Bandhan", "Dussehra"],
+                options_hi: ["होली", "दिवाली", "रक्षा बंधन", "दशहरा"],
+                answer: 1,
+                solution_en: "Diwali, the Festival of Lights, celebrates the victory of light over darkness.",
+                solution_hi: "दिवाली, प्रकाश का त्योहार, प्रकाश की अंधेरे पर जीत का उत्सव मनाता है।"
+            },
+            {
+                q_en: "What is the capital of Australia?",
+                q_hi: "ऑस्ट्रेलिया की राजधानी क्या है?",
+                options_en: ["Sydney", "Melbourne", "Canberra", "Perth"],
+                options_hi: ["सिडनी", "मेलबर्न", "कैनबरा", "पर्थ"],
+                answer: 2,
+                solution_en: "Canberra is the capital city of Australia.",
+                solution_hi: "कैनबरा ऑस्ट्रेलिया की राजधानी है।"
+            },
+            {
+                q_en: "Which scientist proposed the theory of relativity?",
+                q_hi: "सापेक्षता के सिद्धांत को किस वैज्ञानिक ने प्रस्तावित किया?",
+                options_en: ["Isaac Newton", "Albert Einstein", "Galileo Galilei", "Stephen Hawking"],
+                options_hi: ["आइजैक न्यूटन", "अल्बर्ट आइंस्टीन", "गैलीलियो गैलीली", "स्टीफन हॉकिंग"],
+                answer: 1,
+                solution_en: "Albert Einstein proposed the theory of relativity, including E=mc².",
+                solution_hi: "अल्बर्ट आइंस्टीन ने सापेक्षता का सिद्धांत प्रस्तावित किया, जिसमें E=mc² शामिल है।"
+            },
+            {
+                q_en: "Which is the smallest planet in our solar system?",
+                q_hi: "हमारे सौरमंडल का सबसे छोटा ग्रह कौन सा है?",
+                options_en: ["Mars", "Mercury", "Venus", "Pluto"],
+                options_hi: ["मंगल", "बुध", "शुक्र", "प्लूटो"],
+                answer: 1,
+                solution_en: "Mercury is the smallest planet in our solar system.",
+                solution_hi: "बुध हमारे सौरमंडल का सबसे छोटा ग्रह है।"
+            },
+            {
+                q_en: "What is the chemical name for baking soda?",
+                q_hi: "बेकिंग सोडा का रासायनिक नाम क्या है?",
+                options_en: ["Sodium Chloride", "Sodium Bicarbonate", "Calcium Carbonate", "Potassium Chloride"],
+                options_hi: ["सोडियम क्लोराइड", "सोडियम बाइकार्बोनेट", "कैल्शियम कार्बोनेट", "पोटैशियम क्लोराइड"],
+                answer: 1,
+                solution_en: "Baking soda is sodium bicarbonate (NaHCO3), used in cooking and as a leavening agent.",
+                solution_hi: "बेकिंग सोडा सोडियम बाइकार्बोनेट (NaHCO3) है, जिसका उपयोग खाना पकाने और खमीर के रूप में किया जाता है।"
+            },
+            {
+                q_en: "Which Indian state is famous for the Taj Mahal?",
+                q_hi: "ताजमहल के लिए कौन सा भारतीय राज्य प्रसिद्ध है?",
+                options_en: ["Rajasthan", "Uttar Pradesh", "Delhi", "Punjab"],
+                options_hi: ["राजस्थान", "उत्तर प्रदेश", "दिल्ली", "पंजाब"],
+                answer: 1,
+                solution_en: "The Taj Mahal is located in Agra, Uttar Pradesh, a UNESCO World Heritage Site.",
+                solution_hi: "ताजमहल आगरा, उत्तर प्रदेश में स्थित है, जो एक यूनेस्को विश्व धरोहर स्थल है।"
+            }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+        let userAnswers = new Array(questions.length).fill(null);
+        let reviewed = new Array(questions.length).fill(false);
+        let overallTimer;
+        let perQuestionTimer;
+        let timeLeftOverall = 60 * questions.length; // 50 minutes total
+        let timeLeftPerQuestion = 60;
+        let currentLanguage = 'en'; // Default to English
+
+        function getElement(id) {
+            const element = document.getElementById(id);
+            if (!element) {
+                console.error(`Element with ID '${id}' not found`);
+                alert(`Error: Element '${id}' not found. Please refresh the page.`);
+            }
+            return element;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM fully loaded');
+            const startBtn = getElement('startBtn');
+            if (startBtn) {
+                console.log('Start button found, attaching event listeners');
+                const startHandler = () => {
+                    console.log('Start button clicked or touched');
+                    const startScreen = getElement('start-screen');
+                    const quizScreen = getElement('quiz-screen');
+                    if (startScreen && quizScreen) {
+                        startScreen.style.display = 'none';
+                        quizScreen.style.display = 'block';
+                        startQuiz();
+                    } else {
+                        console.error('Start screen or quiz screen missing');
+                    }
+                };
+                startBtn.addEventListener('click', startHandler);
+                startBtn.addEventListener('touchstart', (e) => {
+                    e.preventDefault(); // Prevent double-triggering
+                    startHandler();
+                });
+            } else {
+                console.error('Start button not found');
+            }
+            const languageToggle = getElement('languageToggle');
+            if (languageToggle) {
+                console.log('Language toggle found, attaching event listeners');
+                const toggleHandler = () => {
+                    console.log('Language toggle clicked or activated');
+                    toggleLanguage();
+                };
+                languageToggle.addEventListener('click', toggleHandler);
+                languageToggle.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    toggleHandler();
+                });
+                languageToggle.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleHandler();
+                    }
+                });
+            }
+            const reAttemptBtn = getElement('reAttemptBtn');
+            if (reAttemptBtn) {
+                console.log('Re-attempt button found, attaching event listeners');
+                reAttemptBtn.addEventListener('click', () => {
+                    console.log('Re-attempt button clicked');
+                    currentQuestion = 0;
+                    score = 0;
+                    userAnswers.fill(null);
+                    reviewed.fill(false);
+                    currentLanguage = 'en';
+                    const result = getElement('result');
+                    const solutions = getElement('solutions');
+                    const chartContainer = getElement('chartContainer');
+                    const perQuestionTimer = getElement('perQuestionTimer');
+                    const timerBar = getElement('timerBar');
+                    const languageToggle = getElement('languageToggle');
+                    if (result && solutions && chartContainer && perQuestionTimer && timerBar && languageToggle) {
+                        result.style.display = 'none';
+                        solutions.style.display = 'none';
+                        chartContainer.style.display = 'none';
+                        reAttemptBtn.style.display = 'none';
+                        perQuestionTimer.style.display = 'block';
+                        timerBar.style.display = 'block';
+                        languageToggle.style.display = 'inline';
+                        timeLeftOverall = 60 * questions.length;
+                        timeLeftPerQuestion = 60;
+                        startQuiz();
+                    }
+                });
+            }
+        });
+
+        function startQuiz() {
+            console.log('Starting quiz');
+            loadQuestion();
+            updatePalette();
+            startOverallTimer();
+            startPerQuestionTimer();
+        }
+
+        function loadQuestion() {
+            console.log(`Loading question ${currentQuestion + 1}`);
+            const q = questions[currentQuestion];
+            const questionElement = getElement('question');
+            const optionsDiv = getElement('options');
+            if (questionElement && optionsDiv) {
+                questionElement.innerText = currentLanguage === 'en' ? q.q_en : q.q_hi;
+                optionsDiv.innerHTML = '';
+                const options = currentLanguage === 'en' ? q.options_en : q.options_hi;
+                options.forEach((opt, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option';
+                    btn.innerText = opt;
+                    btn.setAttribute('aria-label', `Option ${index + 1}: ${opt}`);
+                    btn.onclick = () => selectAnswer(index, btn);
+                    btn.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        selectAnswer(index, btn);
+                    });
+                    if (userAnswers[currentQuestion] === index) {
+                        btn.classList.add(index === q.answer ? 'selected' : 'wrong');
+                        if (index !== q.answer) {
+                            optionsDiv.children[q.answer]?.classList.add('selected');
+                        }
+                    }
+                    optionsDiv.appendChild(btn);
+                });
+                getElement('prevBtn').style.display = currentQuestion > 0 ? 'inline-block' : 'none';
+                getElement('submitBtn').style.display = currentQuestion === questions.length - 1 ? 'inline-block' : 'none';
+            }
+            timeLeftPerQuestion = 60;
+            const perQuestionTimerElement = getElement('perQuestionTimer');
+            if (perQuestionTimerElement) {
+                perQuestionTimerElement.innerText = `Time Left: ${timeLeftPerQuestion} seconds`;
+            }
+            clearInterval(perQuestionTimer);
+            startPerQuestionTimer();
+        }
+
+        function toggleLanguage() {
+            console.log(`Toggling language to ${currentLanguage === 'en' ? 'Hindi' : 'English'}`);
+            currentLanguage = currentLanguage === 'en' ? 'hi' : 'en';
+            loadQuestion();
+            updatePalette();
+        }
+
+        function selectAnswer(index, btn) {
+            console.log(`Answer ${index} selected for question ${currentQuestion + 1}`);
+            const q = questions[currentQuestion];
+            document.querySelectorAll('.option').forEach(opt => {
+                opt.classList.remove('selected', 'wrong');
+            });
+            if (userAnswers[currentQuestion] !== null) {
+                if (userAnswers[currentQuestion] === q.answer) {
+                    score -= 2;
+                } else if (userAnswers[currentQuestion] !== q.answer && userAnswers[currentQuestion] !== -1) {
+                    score += 0.5;
+                }
+            }
+            if (index === q.answer) {
+                btn.classList.add('selected');
+                score += 2;
+            } else {
+                btn.classList.add('wrong');
+                document.querySelectorAll('.option')[q.answer].classList.add('selected');
+                score -= 0.5;
+            }
+            userAnswers[currentQuestion] = index;
+            updatePalette();
+        }
+
+        function saveAndNext() {
+            console.log(`Saving and moving to next question from ${currentQuestion + 1}`);
+            if (userAnswers[currentQuestion] === null) userAnswers[currentQuestion] = -1;
+            if (currentQuestion < questions.length - 1) {
+                currentQuestion++;
+                loadQuestion();
+                updatePalette();
+            } else {
+                submitQuiz();
+            }
+        }
+
+        function markForReview() {
+            console.log(`Marking question ${currentQuestion + 1} for review`);
+            reviewed[currentQuestion] = !reviewed[currentQuestion];
+            userAnswers[currentQuestion] = userAnswers[currentQuestion] || -1;
+            updatePalette();
+            saveAndNext();
+        }
+
+        function clearResponse() {
+            console.log(`Clearing response for question ${currentQuestion + 1}`);
+            const q = questions[currentQuestion];
+            if (userAnswers[currentQuestion] !== null) {
+                if (userAnswers[currentQuestion] === q.answer) {
+                    score -= 2;
+                } else if (userAnswers[currentQuestion] !== q.answer && userAnswers[currentQuestion] !== -1) {
+                    score += 0.5;
+                }
+            }
+            userAnswers[currentQuestion] = null;
+            reviewed[currentQuestion] = false;
+            document.querySelectorAll('.option').forEach(opt => {
+                opt.classList.remove('selected', 'wrong');
+            });
+            updatePalette();
+        }
+
+        function previousQuestion() {
+            if (currentQuestion > 0) {
+                console.log(`Moving to previous question ${currentQuestion}`);
+                currentQuestion--;
+                loadQuestion();
+                updatePalette();
+            }
+        }
+
+        function updatePalette() {
+            console.log('Updating palette');
+            const palette = getElement('questionPalette');
+            if (palette) {
+                palette.innerHTML = '';
+                for (let i = 0; i < questions.length; i++) {
+                    const item = document.createElement('div');
+                    item.className = 'palette-item';
+                    item.innerText = i + 1;
+                    item.setAttribute('aria-label', `Go to question ${i + 1}`);
+                    item.onclick = () => {
+                        console.log(`Navigating to question ${i + 1}`);
+                        currentQuestion = i;
+                        loadQuestion();
+                    };
+                    item.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        console.log(`Navigating to question ${i + 1} via touch`);
+                        currentQuestion = i;
+                        loadQuestion();
+                    });
+                    if (userAnswers[i] !== null) item.classList.add('answered');
+                    if (reviewed[i]) item.classList.add('reviewed');
+                    palette.appendChild(item);
+                }
+            }
+        }
+
+        function startOverallTimer() {
+            console.log('Starting overall timer');
+            const timerBar = getElement('timerBar');
+            if (timerBar) {
+                timerBar.style.animation = `timer ${timeLeftOverall}s linear forwards`;
+            }
+            overallTimer = setInterval(() => {
+                timeLeftOverall--;
+                if (timeLeftOverall <= 0) {
+                    console.log('Overall timer expired');
+                    clearInterval(overallTimer);
+                    clearInterval(perQuestionTimer);
+                    submitQuiz();
+                }
+            }, 1000);
+        }
+
+        function startPerQuestionTimer() {
+            console.log('Starting per-question timer');
+            perQuestionTimer = setInterval(() => {
+                timeLeftPerQuestion--;
+                const perQuestionTimerElement = getElement('perQuestionTimer');
+                if (perQuestionTimerElement) {
+                    perQuestionTimerElement.innerText = `Time Left: ${timeLeftPerQuestion} seconds`;
+                }
+                if (timeLeftPerQuestion <= 0) {
+                    console.log(`Per-question timer expired for question ${currentQuestion + 1}`);
+                    clearInterval(perQuestionTimer);
+                    saveAndNext();
+                }
+            }, 1000);
+        }
+
+        function submitQuiz() {
+            console.log('Submitting quiz');
+            clearInterval(overallTimer);
+            clearInterval(perQuestionTimer);
+            getElement('options').innerHTML = '';
+            getElement('question').innerText = '';
+            getElement('perQuestionTimer').style.display = 'none';
+            getElement('timerBar').style.display = 'none';
+            getElement('languageToggle').style.display = 'none';
+            getElement('result').innerText = `Your Score: ${score}`;
+            getElement('result').style.display = 'block';
+
+            const solutionsDiv = getElement('solutions');
+            solutionsDiv.innerHTML = '';
+            questions.forEach((q, idx) => {
+                const slide = document.createElement('div');
+                slide.className = 'solution-slide';
+                const userAns = userAnswers[idx] !== null && userAnswers[idx] !== -1 ? q.options_en[userAnswers[idx]] : 'Not Attempted';
+                slide.innerHTML = `
+                    <b>Question ${idx + 1}:</b> ${q.q_en} / ${q.q_hi}<br>
+                    <span class="correct">Correct Answer: ${q.options_en[q.answer]} / ${q.options_hi[q.answer]}</span><br>
+                    <span class="attempt">Your Attempt: ${userAns}</span><br>
+                    <span>Explanation (EN): ${q.solution_en}</span><br>
+                    <span>Explanation (HI): ${q.solution_hi}</span>
+                `;
+                solutionsDiv.appendChild(slide);
+            });
+            solutionsDiv.style.display = 'block';
+
+            const correctCount = userAnswers.filter((ans, idx) => ans === questions[idx].answer).length;
+            const incorrectCount = userAnswers.filter((ans, idx) => ans !== null && ans !== questions[idx].answer && ans !== -1).length;
+            const notAttemptedCount = questions.length - userAnswers.filter(ans => ans !== null).length;
+            const chartContainer = getElement('chartContainer');
+            chartContainer.style.display = 'block';
+            getElement('barChart').innerText = `Bar Chart: [Correct: ${correctCount}, Incorrect: ${incorrectCount}, Not Attempted: ${notAttemptedCount}]`;
+            getElement('pieChart').innerText = `Pie Chart: [Correct: ${correctCount}, Incorrect: ${incorrectCount}, Not Attempted: ${notAttemptedCount}]`;
+
+            getElement('reAttemptBtn').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
